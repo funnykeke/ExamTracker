@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">考试追踪</string>
+    <string name="exam_list_title">我的考试</string>
+    <string name="add_exam_title">添加考试</string>
+    <string name="exam_detail_title">考试详情</string>
+    <string name="settings_title">设置</string>
+    <string name="api_key_label">Anthropic API Key</string>
+    <string name="api_key_hint">sk-ant-...</string>
+    <string name="save">保存</string>
+    <string name="cancel">取消</string>
+    <string name="delete">删除</string>
+    <string name="edit">编辑</string>
+    <string name="smart_extract">智能提取</string>
+    <string name="sync_calendar">同步到日历</string>
+    <string name="export_csv">导出 CSV</string>
+    <string name="share">分享</string>
+    <string name="url_label">公告链接</string>
+    <string name="url_hint">粘贴公告链接…</string>
+    <string name="position_name_label">岗位名称（选填）</string>
+    <string name="position_code_label">岗位代码（选填）</string>
+    <string name="paste_content_label">或直接粘贴公告内容</string>
+    <string name="paste_hint">粘贴公告全文…</string>
+    <string name="extracting">正在智能提取…</string>
+    <string name="preview_title">确认提取结果</string>
+    <string name="confirm_save">确认保存</string>
+    <string name="no_exams">还没有追踪的考试\n点击右下角 + 添加</string>
+    <string name="delete_confirm">确定删除这个考试吗？</string>
+</resources>

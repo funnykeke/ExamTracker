@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!-- Background circle area (inset for adaptive icon safe zone) -->
+    <!-- Icon centered in 72x72 safe zone, offset by 18dp -->
+
+    <!-- Calendar body -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M28,42 L28,80 Q28,84 32,84 L76,84 Q80,84 80,80 L80,42 Z" />
+
+    <!-- Calendar top bar -->
+    <path
+        android:fillColor="#CCE5FF"
+        android:pathData="M28,34 L28,44 L80,44 L80,34 Q80,30 76,30 L32,30 Q28,30 28,34 Z" />
+
+    <!-- Calendar rings -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:strokeColor="#1565C0"
+        android:strokeWidth="2"
+        android:pathData="M40,26 L40,38" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:strokeColor="#1565C0"
+        android:strokeWidth="2"
+        android:pathData="M68,26 L68,38" />
+
+    <!-- Grid lines horizontal -->
+    <path
+        android:strokeColor="#BBDEFB"
+        android:strokeWidth="1"
+        android:pathData="M28,56 L80,56" />
+    <path
+        android:strokeColor="#BBDEFB"
+        android:strokeWidth="1"
+        android:pathData="M28,68 L80,68" />
+
+    <!-- Grid lines vertical -->
+    <path
+        android:strokeColor="#BBDEFB"
+        android:strokeWidth="1"
+        android:pathData="M42,44 L42,84" />
+    <path
+        android:strokeColor="#BBDEFB"
+        android:strokeWidth="1"
+        android:pathData="M54,44 L54,84" />
+    <path
+        android:strokeColor="#BBDEFB"
+        android:strokeWidth="1"
+        android:pathData="M66,44 L66,84" />
+
+    <!-- Checkmark (exam done indicator) -->
+    <path
+        android:fillColor="#1565C0"
+        android:pathData="M47,61 L52,66 L61,55 L63,57 L52,70 L45,63 Z" />
+
+    <!-- Pencil icon (bottom right) -->
+    <path
+        android:fillColor="#1976D2"
+        android:pathData="M70,70 L76,64 L80,68 L74,74 Z" />
+    <path
+        android:fillColor="#42A5F5"
+        android:pathData="M64,76 L70,70 L74,74 L68,80 Z" />
+    <path
+        android:fillColor="#FFF176"
+        android:pathData="M64,76 L62,82 L68,80 Z" />
+
+    <!-- Star decoration top right -->
+    <path
+        android:fillColor="#FFD54F"
+        android:pathData="M76,32 L77.5,36 L82,36 L78.5,38.5 L80,43 L76,40 L72,43 L73.5,38.5 L70,36 L74.5,36 Z" />
+</vector>

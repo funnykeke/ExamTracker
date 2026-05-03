@@ -2,6 +2,8 @@
 
 一个帮助追踪中国体制内考试（公务员、事业单位、国企等）全流程的 Android 应用。
 
+本项目由 [Claude Code](https://claude.ai/code) + DeepSeek-V4-Pro 驱动开发。
+
 ## 功能
 
 - **公告智能解析**：输入考试公告网址，通过 AI 自动提取关键字段（单位、岗位、时间节点等），无需手动填写
@@ -75,7 +77,7 @@ app/src/main/java/com/examtracker/
 
 ```bash
 # 克隆仓库
-git clone https://github.com/nichuzhishi/ExamTracker.git
+git clone git@github.com:funnykeke/ExamTracker.git
 cd ExamTracker
 
 # 构建

@@ -7,7 +7,7 @@ import androidx.room.RoomDatabase
 
 @Database(
     entities = [ExamEntity::class, CustomTimelineEvent::class],
-    version = 3,
+    version = 5,
     exportSchema = false
 )
 abstract class ExamDatabase : RoomDatabase() {
@@ -25,8 +25,7 @@ abstract class ExamDatabase : RoomDatabase() {
                     context.applicationContext,
                     ExamDatabase::class.java,
                     "exam_tracker.db"
-                ).addMigrations(MIGRATION_1_2, MIGRATION_2_3)
-                    .fallbackToDestructiveMigration()
+                ).addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
                     .build()
                 INSTANCE = instance
                 instance
@@ -55,6 +54,18 @@ abstract class ExamDatabase : RoomDatabase() {
                     )
                 """)
                 db.execSQL("CREATE INDEX IF NOT EXISTS index_custom_timeline_events_examId ON custom_timeline_events (examId)")
+            }
+        }
+
+        private val MIGRATION_3_4 = object : androidx.room.migration.Migration(3, 4) {
+            override fun migrate(db: androidx.sqlite.db.SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE exams ADD COLUMN isPaid INTEGER NOT NULL DEFAULT 0")
+            }
+        }
+
+        private val MIGRATION_4_5 = object : androidx.room.migration.Migration(4, 5) {
+            override fun migrate(db: androidx.sqlite.db.SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE custom_timeline_events ADD COLUMN eventType TEXT NOT NULL DEFAULT 'CUSTOM'")
             }
         }
     }

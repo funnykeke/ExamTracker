@@ -9,8 +9,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import java.text.SimpleDateFormat
-import java.util.Date
+import com.examtracker.data.db.ExamEntity
+import java.time.Instant
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
 import java.util.Locale
 import java.util.concurrent.TimeUnit
 
@@ -21,14 +23,17 @@ enum class ExamStatus(val label: String, val color: Color) {
     ENDED("已结束", Color(0xFF757575))
 }
 
-fun getExamStatus(regEndTime: Long?, examTime: Long?): ExamStatus {
+fun hasRegistrationInfo(account: String, registeredPositionName: String): Boolean =
+    account.isNotBlank() || registeredPositionName.isNotBlank()
+
+fun getExamStatus(
+    regEndTime: Long?,
+    examTime: Long?,
+    hasRegistered: Boolean = false
+): ExamStatus {
     val now = System.currentTimeMillis()
-    if (regEndTime != null && now <= regEndTime) return ExamStatus.REGISTERING
-    if (examTime != null && now <= examTime) {
-        val daysUntilExam = TimeUnit.MILLISECONDS.toDays(examTime - now)
-        if (daysUntilExam <= 1) return ExamStatus.UPCOMING
-        return ExamStatus.UPCOMING
-    }
+    if (!hasRegistered && regEndTime != null && now <= regEndTime) return ExamStatus.REGISTERING
+    if (examTime != null && now <= examTime) return ExamStatus.UPCOMING
     if (examTime != null && now > examTime) return ExamStatus.FINISHED
     return ExamStatus.ENDED
 }
@@ -44,6 +49,44 @@ fun getCountdownText(examTime: Long?): String {
     if (hours > 0) return "距笔试 $hours 小时"
     val minutes = TimeUnit.MILLISECONDS.toMinutes(diff)
     return "距笔试 $minutes 分钟"
+}
+
+fun getRegistrationCountdownText(regEndTime: Long?): String {
+    if (regEndTime == null) return ""
+    val now = System.currentTimeMillis()
+    val diff = regEndTime - now
+    if (diff <= 0) return ""
+    val days = TimeUnit.MILLISECONDS.toDays(diff)
+    if (days > 0) return "距报名结束${days}天"
+    val hours = TimeUnit.MILLISECONDS.toHours(diff)
+    if (hours > 0) return "距报名结束${hours}小时"
+    return "距报名结束${TimeUnit.MILLISECONDS.toMinutes(diff)}分钟"
+}
+
+fun getPaymentCountdownText(paymentEndTime: Long?): String {
+    if (paymentEndTime == null) return ""
+    val now = System.currentTimeMillis()
+    val diff = paymentEndTime - now
+    if (diff <= 0) return "缴费已截止"
+    val days = TimeUnit.MILLISECONDS.toDays(diff)
+    if (days > 0) return "距缴费结束剩${days}天"
+    val hours = TimeUnit.MILLISECONDS.toHours(diff)
+    if (hours > 0) return "距缴费结束剩${hours}小时"
+    return "距缴费结束剩${TimeUnit.MILLISECONDS.toMinutes(diff)}分钟"
+}
+
+fun getPaymentUrgencyColor(paymentEndTime: Long?): Color {
+    if (paymentEndTime == null) return Color(0xFFFFA726)
+    val now = System.currentTimeMillis()
+    val daysLeft = TimeUnit.MILLISECONDS.toDays(paymentEndTime - now)
+    return when {
+        daysLeft < 0  -> Color(0xFFB71C1C)  // overdue: dark red
+        daysLeft <= 1 -> Color(0xFFD32F2F)  // ≤1 day: red
+        daysLeft <= 3 -> Color(0xFFEF5350)  // 1-3 days
+        daysLeft <= 7 -> Color(0xFFFF7043)  // 3-7 days
+        daysLeft <= 14 -> Color(0xFFFFA726) // 7-14 days
+        else           -> Color(0xFFFFCA28) // >14 days: amber
+    }
 }
 
 @Composable
@@ -81,15 +124,73 @@ fun CountdownBadge(examTime: Long?) {
     }
 }
 
-private val dateFormatter = SimpleDateFormat("MM/dd HH:mm", Locale.CHINA)
-private val fullDateFormatter = SimpleDateFormat("yyyy年MM月dd日 HH:mm", Locale.CHINA)
+@Composable
+fun PaymentStatusBadge(exam: ExamEntity) {
+    if (!hasRegistrationInfo(exam.account, exam.registeredPositionName)) return
 
-fun formatTimestamp(timestamp: Long?): String {
-    if (timestamp == null || timestamp == 0L) return ""
-    return dateFormatter.format(Date(timestamp))
+    if (exam.isPaid) {
+        Surface(
+            color = Color(0xFF388E3C).copy(alpha = 0.12f),
+            shape = MaterialTheme.shapes.small
+        ) {
+            Text(
+                text = "已缴费",
+                modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
+                style = MaterialTheme.typography.labelSmall,
+                fontWeight = FontWeight.Bold,
+                color = Color(0xFF388E3C)
+            )
+        }
+    } else {
+        val text = getPaymentCountdownText(exam.paymentEndTime)
+        val color = getPaymentUrgencyColor(exam.paymentEndTime)
+        Surface(
+            color = color.copy(alpha = 0.12f),
+            shape = MaterialTheme.shapes.small
+        ) {
+            Text(
+                text = text.ifBlank { "未缴费" },
+                modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
+                style = MaterialTheme.typography.labelSmall,
+                fontWeight = FontWeight.Bold,
+                color = color
+            )
+        }
+    }
 }
+
+@Composable
+fun RegistrationCountdownBadge(
+    regEndTime: Long?,
+    account: String,
+    registeredPositionName: String
+) {
+    if (hasRegistrationInfo(account, registeredPositionName)) return
+    val text = getRegistrationCountdownText(regEndTime)
+    if (text.isBlank()) return
+
+    val diff = (regEndTime ?: return) - System.currentTimeMillis()
+    val isUrgent = diff <= TimeUnit.DAYS.toMillis(3)
+    val color = if (isUrgent) Color(0xFFD32F2F) else Color(0xFFEF6C00)
+
+    Surface(
+        color = color.copy(alpha = 0.12f),
+        shape = MaterialTheme.shapes.small
+    ) {
+        Text(
+            text = text,
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
+            style = MaterialTheme.typography.labelSmall,
+            fontWeight = FontWeight.Bold,
+            color = color
+        )
+    }
+}
+
+private val fullDateFormatter = DateTimeFormatter.ofPattern("yyyy年MM月dd日 HH:mm")
+    .withZone(ZoneId.systemDefault())
 
 fun formatDateFull(timestamp: Long?): String {
     if (timestamp == null || timestamp == 0L) return "未定"
-    return fullDateFormatter.format(Date(timestamp))
+    return fullDateFormatter.format(Instant.ofEpochMilli(timestamp))
 }

@@ -57,6 +57,7 @@ import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -64,6 +65,8 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -91,8 +94,11 @@ import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.examtracker.data.db.CustomTimelineEvent
+import com.examtracker.data.db.EventType
 import com.examtracker.data.db.ExamEntity
+import com.examtracker.ui.components.PaymentStatusBadge
 import com.examtracker.ui.components.StatusChip
+import com.examtracker.ui.components.hasRegistrationInfo
 import com.examtracker.ui.components.TimelineItem
 import com.examtracker.ui.components.TimelineView
 import com.examtracker.ui.components.formatDateFull
@@ -129,6 +135,7 @@ fun ExamDetailScreen(
     var eventTitle by remember { mutableStateOf("") }
     var eventIcon by remember { mutableStateOf("📌") }
     var eventTimestamp by remember { mutableLongStateOf(System.currentTimeMillis()) }
+    var selectedEventType by remember { mutableStateOf("CUSTOM") }
     // date picker state
     var showDatePicker by remember { mutableStateOf(false) }
     var showTimePicker by remember { mutableStateOf(false) }
@@ -190,9 +197,9 @@ fun ExamDetailScreen(
                             cal.set(Calendar.MONTH, newCal.get(Calendar.MONTH))
                             cal.set(Calendar.DAY_OF_MONTH, newCal.get(Calendar.DAY_OF_MONTH))
                             eventTimestamp = cal.timeInMillis
+                            showTimePicker = true
                         }
                         showDatePicker = false
-                        showTimePicker = true
                     }) { Text("下一步") }
                 },
                 dismissButton = { TextButton(onClick = { showDatePicker = false }) { Text("取消") } }
@@ -244,6 +251,35 @@ fun ExamDetailScreen(
                     )
                     Spacer(modifier = Modifier.height(12.dp))
 
+                    // event type selector
+                    Text("事件类型", style = MaterialTheme.typography.labelMedium)
+                    Spacer(modifier = Modifier.height(6.dp))
+                    FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        EventType.entries.forEach { type ->
+                            val selected = selectedEventType == type.name
+                            Surface(
+                                modifier = Modifier.clickable {
+                                    selectedEventType = type.name
+                                    eventIcon = type.icon
+                                },
+                                color = if (selected) MaterialTheme.colorScheme.primary
+                                    else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
+                                shape = RoundedCornerShape(6.dp)
+                            ) {
+                                Text(
+                                    text = "${type.icon} ${type.label}",
+                                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
+                                    style = MaterialTheme.typography.labelSmall,
+                                    fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
+                                    color = if (selected) MaterialTheme.colorScheme.onPrimary
+                                        else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                                )
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
                     // date + time display
                     Row(
                         modifier = Modifier
@@ -290,10 +326,10 @@ fun ExamDetailScreen(
                             val e = editingEvent
                             if (e != null) {
                                 viewModel.updateCustomEvent(
-                                    e.copy(title = eventTitle.trim(), icon = eventIcon, timestamp = eventTimestamp)
+                                    e.copy(title = eventTitle.trim(), icon = eventIcon, timestamp = eventTimestamp, eventType = selectedEventType)
                                 )
                             } else {
-                                viewModel.addCustomEvent(eventTitle.trim(), eventIcon, eventTimestamp)
+                                viewModel.addCustomEvent(eventTitle.trim(), eventIcon, eventTimestamp, selectedEventType)
                             }
                             showEventDialog = false
                             editingEvent = null
@@ -391,7 +427,8 @@ fun ExamDetailScreen(
                                     )
                                 }
                             }
-                            StatusChip(status = getExamStatus(exam.regEndTime, exam.examTime))
+                            val headerHasRegInfo = hasRegistrationInfo(exam.account, exam.registeredPositionName)
+                            StatusChip(status = getExamStatus(exam.regEndTime, exam.examTime, headerHasRegInfo))
                         }
                         if (exam.positionCode.isNotBlank()) {
                             Spacer(modifier = Modifier.height(4.dp))
@@ -469,6 +506,32 @@ fun ExamDetailScreen(
                                 if (exam.accountPassword.isNotBlank()) CopyRow("报名密码", exam.accountPassword, context)
                                 if (exam.registeredPositionName.isNotBlank()) CopyRow("报名岗位", exam.registeredPositionName, context)
                                 if (exam.registeredPositionCode.isNotBlank()) CopyRow("报名代码", exam.registeredPositionCode, context)
+
+                                // 缴费状态开关（仅在已录入报名信息时显示）
+                                Spacer(modifier = Modifier.height(10.dp))
+                                HorizontalDivider()
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Text(
+                                            text = "是否已缴费",
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            fontWeight = FontWeight.Medium
+                                        )
+                                        if (exam.paymentEndTime != null) {
+                                            Spacer(modifier = Modifier.width(8.dp))
+                                            PaymentStatusBadge(exam = exam)
+                                        }
+                                    }
+                                    Switch(
+                                        checked = exam.isPaid,
+                                        onCheckedChange = { viewModel.toggleIsPaid(examId, it) }
+                                    )
+                                }
                             }
                         }
                     }
@@ -523,6 +586,7 @@ fun ExamDetailScreen(
                     eventTitle = ""
                     eventIcon = "📌"
                     eventTimestamp = System.currentTimeMillis()
+                    selectedEventType = "CUSTOM"
                     showEventDialog = true
                 }) {
                     Icon(Icons.Default.Add, contentDescription = "添加", tint = MaterialTheme.colorScheme.primary)
@@ -554,6 +618,7 @@ fun ExamDetailScreen(
                                         eventTitle = event.title
                                         eventIcon = event.icon
                                         eventTimestamp = event.timestamp
+                                        selectedEventType = event.eventType
                                         showEventDialog = true
                                     },
                                     onDelete = { viewModel.deleteCustomEvent(event) },

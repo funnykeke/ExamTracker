@@ -5,9 +5,11 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.examtracker.ExamTrackerApp
 import com.examtracker.data.db.CustomTimelineEvent
+import com.examtracker.data.db.EventType
 import com.examtracker.data.db.ExamEntity
 import com.examtracker.data.repository.ExamRepository
 import com.examtracker.util.CalendarSync
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.collectLatest
@@ -36,6 +38,7 @@ class ExamDetailViewModel(application: Application) : AndroidViewModel(applicati
     val state: StateFlow<ExamDetailState> = _state
 
     private var currentExamId: Long = 0
+    private var eventsJob: Job? = null
 
     fun loadExam(id: Long) {
         currentExamId = id
@@ -43,8 +46,8 @@ class ExamDetailViewModel(application: Application) : AndroidViewModel(applicati
             val exam = repository.getExamById(id)
             _state.value = _state.value.copy(exam = exam, isLoading = false)
         }
-        // observe custom events
-        viewModelScope.launch {
+        eventsJob?.cancel()
+        eventsJob = viewModelScope.launch {
             eventDao.getEventsByExamId(id).collectLatest { events ->
                 _state.value = _state.value.copy(customEvents = events)
             }
@@ -91,7 +94,7 @@ class ExamDetailViewModel(application: Application) : AndroidViewModel(applicati
 
     // ── 自定义时间点 CRUD ──────────────────────────────────────────
 
-    fun addCustomEvent(title: String, icon: String, timestamp: Long) {
+    fun addCustomEvent(title: String, icon: String, timestamp: Long, eventType: String = "CUSTOM") {
         if (currentExamId == 0L || title.isBlank() || timestamp == 0L) return
         viewModelScope.launch {
             eventDao.insertEvent(
@@ -99,16 +102,41 @@ class ExamDetailViewModel(application: Application) : AndroidViewModel(applicati
                     examId = currentExamId,
                     title = title.trim(),
                     icon = icon,
-                    timestamp = timestamp
+                    timestamp = timestamp,
+                    eventType = eventType
                 )
             )
+            // 如果是标准类型，同步更新 ExamEntity 对应字段
+            syncExamFieldFromEvent(currentExamId, eventType, timestamp)
         }
     }
 
     fun updateCustomEvent(event: CustomTimelineEvent) {
         viewModelScope.launch {
             eventDao.updateEvent(event)
+            // 如果是标准类型，同步更新 ExamEntity 对应字段
+            syncExamFieldFromEvent(event.examId, event.eventType, event.timestamp)
         }
+    }
+
+    private suspend fun syncExamFieldFromEvent(examId: Long, eventType: String, timestamp: Long) {
+        val type = EventType.fromString(eventType)
+        if (type == EventType.CUSTOM) return
+        val exam = repository.getExamById(examId) ?: return
+        val updated = when (type) {
+            EventType.REGISTRATION_START -> exam.copy(regStartTime = timestamp)
+            EventType.REGISTRATION_END -> exam.copy(regEndTime = timestamp)
+            EventType.REVIEW_END -> exam.copy(reviewEndTime = timestamp)
+            EventType.PAYMENT_END -> exam.copy(paymentEndTime = timestamp)
+            EventType.ADMIT_CARD -> exam.copy(admitCardStart = timestamp)
+            EventType.EXAM -> exam.copy(examTime = timestamp)
+            EventType.SCORE_PUBLISH -> exam.copy(scorePublishTime = timestamp)
+            EventType.QUALIFICATION_REVIEW -> exam.copy(qualificationReviewTime = timestamp)
+            EventType.INTERVIEW -> exam.copy(interviewTime = timestamp)
+            else -> return
+        }
+        repository.updateExam(updated)
+        _state.value = _state.value.copy(exam = updated)
     }
 
     fun deleteCustomEvent(event: CustomTimelineEvent) {
@@ -176,6 +204,17 @@ class ExamDetailViewModel(application: Application) : AndroidViewModel(applicati
                 registeredPositionName = registeredPositionName.trim(),
                 registeredPositionCode = registeredPositionCode.trim()
             )
+            repository.updateExam(updated)
+            _state.value = _state.value.copy(exam = updated)
+        }
+    }
+
+    // ── 缴费状态 ────────────────────────────────────────────────────
+
+    fun toggleIsPaid(examId: Long, isPaid: Boolean) {
+        viewModelScope.launch {
+            val exam = repository.getExamById(examId) ?: return@launch
+            val updated = exam.copy(isPaid = isPaid)
             repository.updateExam(updated)
             _state.value = _state.value.copy(exam = updated)
         }

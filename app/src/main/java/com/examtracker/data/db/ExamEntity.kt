@@ -33,6 +33,7 @@ data class ExamEntity(
     val interviewFormat: String = "",
     val scoreFormula: String = "",
     val examFee: String = "",
+    val isPaid: Boolean = false,
     val status: String = "",
     val notes: String = "",
     val calendarEventIds: String = "",
